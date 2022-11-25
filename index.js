@@ -26,7 +26,7 @@ try{
         const query={};
         const result=await categorysCollection.find(query).toArray();
         res.send(result);
-    })
+    });
 // all product
     app.get('/productsCollection',async(req, res)=>{
         const query={};
@@ -53,7 +53,6 @@ finally{
 }
 }
 run().catch(console.log);
-
 
 
 

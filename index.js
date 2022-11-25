@@ -22,6 +22,7 @@ async function run() {
         const categorysCollection = client.db('best-buy').collection('categorys');
         const productsCollection = client.db('best-buy').collection('products');
         const bookingsCollection = client.db('best-buy').collection('bookings');
+        const usersCollection = client.db('best-buy').collection('users');
 
 
 

@@ -56,7 +56,7 @@ async function run() {
         // bookings product
         app.post('/bookings', async (req, res) => {
             const booking = req.body;
-            console.log(booking);
+            // console.log(booking);
             const result = await bookingsCollection.insertOne(booking);
             res.send(result);
         });
@@ -66,7 +66,15 @@ async function run() {
             const query={email:email};
             const bookings=await bookingsCollection.find(query).toArray();
             res.send(bookings);
-        })
+        });
+        
+        // user
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            // console.log(user);
+            const result = await usersCollection.insertOne(user);
+            res.send(result);
+        });
 
 
 

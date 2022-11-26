@@ -151,6 +151,13 @@ async function run() {
             const query={}
             const result=await categorysCollection.find(query).project({category:1}).toArray();
             res.send(result);
+        });
+
+        // add product bye seller.
+        app.post('/products',async(req,res)=>{
+            const product=req.body;
+            const result=await productsCollection.insertOne(product);
+            res.send(result);
         })
 
 

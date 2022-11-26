@@ -144,6 +144,13 @@ async function run() {
             }
             const result =await usersCollection.updateOne(filter,updateDoc,options);
             res.send(result);
+        });
+
+        // add category product 
+        app.get('/productCategory',async(req, res)=>{
+            const query={}
+            const result=await categorysCollection.find(query).project({category:1}).toArray();
+            res.send(result);
         })
 
 

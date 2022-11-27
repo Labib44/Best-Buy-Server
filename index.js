@@ -3,6 +3,8 @@ const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const stripe = require("stripe")(process.env.SECRET_KEY);
+
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -43,6 +45,7 @@ async function run() {
         const productsCollection = client.db('best-buy').collection('products');
         const bookingsCollection = client.db('best-buy').collection('bookings');
         const usersCollection = client.db('best-buy').collection('users');
+        const paymentsCollection = client.db('best-buy').collection('payments');
 
 
 
@@ -166,6 +169,41 @@ async function run() {
             const query={_id:ObjectId(id)};
             const booking=await bookingsCollection.findOne(query);
             res.send(booking);
+        });
+
+        // payment-intent
+        app.post("/create-payment-intent", async (req, res) =>{
+            const booking=req.body;
+            const price=booking.price.split('$')[1];
+            console.log(price);
+            const amount=price*100;
+
+            const paymentIntent=await stripe.paymentIntents.create({
+                currency: "usd",
+                amount:amount,
+                "payment_method_types": [
+                    "card"
+                  ],
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret,
+              });
+        });
+
+        // payment collection
+        app.post('/payments', async(req, res)=>{
+            const payment=req.body;
+            const result=await paymentsCollection.insertOne(payment);
+            const id=payment.booking;
+            const filter={_id:ObjectId(id)}
+            const updateDoc={
+                $set:{
+                    paid:true,
+                    transactionId:payment.transactionId
+                }
+            }
+            const updateResult=await bookingsCollection.updateOne(filter,updateDoc)
+            res.send(result);
         })
 
 

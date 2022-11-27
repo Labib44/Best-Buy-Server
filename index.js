@@ -26,13 +26,13 @@ function verifyJwt(req, res, next) {
     if (!authHeader) {
         return res.status(401).send('Unauthorized');
     }
-    const token=authHeader.split(' ')[1];
+    const token = authHeader.split(' ')[1];
 
-    jwt.verify(token, process.env.ACCESS_TOKEN, function(err,decoded){
-        if(err){
-            return res.status(403).send({message:'forbidden access'})
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
+        if (err) {
+            return res.status(403).send({ message: 'forbidden access' })
         }
-        req.decoded=decoded;
+        req.decoded = decoded;
         next();
     })
 }
@@ -46,6 +46,7 @@ async function run() {
         const bookingsCollection = client.db('best-buy').collection('bookings');
         const usersCollection = client.db('best-buy').collection('users');
         const paymentsCollection = client.db('best-buy').collection('payments');
+        const advertisCollection = client.db('best-buy').collection('advertis');
 
 
 
@@ -86,7 +87,7 @@ async function run() {
 
         app.get('/bookings', verifyJwt, async (req, res) => {
             const email = req.query.email;
-            const decodedEmail=req.decoded.email;
+            const decodedEmail = req.decoded.email;
 
             const query = { email: email };
             const bookings = await bookingsCollection.find(query).toArray();
@@ -106,105 +107,138 @@ async function run() {
             res.status(403).send({ accessToken: '' })
         })
         // Admin
-        app.get('/users/admin/:email', async(req, res)=>{
-            const email=req.params.email;
-            const query={email};
-            const user=await usersCollection.findOne(query);
-            res.send({isAdmin:user?.role === 'admin'});
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send({ isAdmin: user?.role === 'admin' });
         })
 
-        // user
+        // user post
         app.post('/users', async (req, res) => {
             const user = req.body;
             // console.log(user);
             const result = await usersCollection.insertOne(user);
             res.send(result);
         });
-
-        app.get('/users', async(req, res)=>{
-            const query={};
-            const users=await usersCollection.find(query).toArray();
+        // users get
+        app.get('/users', async (req, res) => {
+            const query = {};
+            const users = await usersCollection.find(query).toArray();
             res.send(users);
         });
 
-        // Make Admin
-        app.put('/users/admin/:id',verifyJwt, async(req,res)=>{
-            const decodedEmail=req.decoded.email;
-            const query={email:decodedEmail}
-            const user=await usersCollection.findOne(query);
+        // user delete
+        app.delete('/users/:id', verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) }
+            const result = await usersCollection.deleteOne(filter);
+            res.send(result);
+        })
 
-            if(user?.role !== 'admin'){
-                return res.status(403).send({message:'forbidden access'})
+        // Make Admin
+        app.put('/users/admin/:id', verifyJwt, async (req, res) => {
+            const decodedEmail = req.decoded.email;
+            const query = { email: decodedEmail }
+            const user = await usersCollection.findOne(query);
+
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ message: 'forbidden access' })
             }
 
-            const id=req.params.id;
-            const filter={_id:ObjectId(id)}
-            const options={upsert:true}
-            const updateDoc={
-                $set:{
-                    role:'admin'
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) }
+            const options = { upsert: true }
+            const updateDoc = {
+                $set: {
+                    role: 'admin'
                 }
             }
-            const result =await usersCollection.updateOne(filter,updateDoc,options);
+            const result = await usersCollection.updateOne(filter, updateDoc, options);
             res.send(result);
         });
 
         // add category product 
-        app.get('/productCategory',async(req, res)=>{
-            const query={}
-            const result=await categorysCollection.find(query).project({category:1}).toArray();
+        app.get('/productCategory', async (req, res) => {
+            const query = {}
+            const result = await categorysCollection.find(query).project({ category: 1 }).toArray();
             res.send(result);
         });
 
         // add product bye seller.
-        app.post('/products',async(req,res)=>{
-            const product=req.body;
-            const result=await productsCollection.insertOne(product);
+        app.post('/products', async (req, res) => {
+            const product = req.body;
+            const result = await productsCollection.insertOne(product);
             res.send(result);
         });
 
         // payment booking product
-        app.get('/bookings/:id',async(req, res)=>{
-            const id=req.params.id;
-            const query={_id:ObjectId(id)};
-            const booking=await bookingsCollection.findOne(query);
+        app.get('/bookings/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const booking = await bookingsCollection.findOne(query);
             res.send(booking);
         });
 
         // payment-intent
-        app.post("/create-payment-intent", async (req, res) =>{
-            const booking=req.body;
-            const price=booking.price.split('$')[1];
+        app.post("/create-payment-intent", async (req, res) => {
+            const booking = req.body;
+            const price = booking.price.split('$')[1];
             // console.log(price);
-            const amount=price*100;
+            const amount = price * 100;
 
-            const paymentIntent=await stripe.paymentIntents.create({
+            const paymentIntent = await stripe.paymentIntents.create({
                 currency: "usd",
-                amount:amount,
+                amount: amount,
                 "payment_method_types": [
                     "card"
-                  ],
+                ],
             });
             res.send({
                 clientSecret: paymentIntent.client_secret,
-              });
+            });
         });
 
         // payment collection
-        app.post('/payments', async(req, res)=>{
-            const payment=req.body;
-            const result=await paymentsCollection.insertOne(payment);
-            const id=payment.booking;
-            const filter={_id:ObjectId(id)}
-            const updateDoc={
-                $set:{
-                    paid:true,
-                    transactionId:payment.transactionId
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const result = await paymentsCollection.insertOne(payment);
+            const id = payment.booking;
+            const filter = { _id: ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
                 }
             }
-            const updateResult=await bookingsCollection.updateOne(filter,updateDoc)
+            const updateResult = await bookingsCollection.updateOne(filter, updateDoc)
             res.send(result);
-        })
+        });
+
+        // Seller
+
+        app.get('/users/seller/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send({ isSeller: user?.role === 'seller' });
+        });
+        // Admin seller buyer
+        app.get('/users/admin/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email };
+            const user = await usersCollection.findOne(query);
+            res.send({ isAdmin: user?.role === 'admin' || 'seller' || 'buyer' });
+        });
+
+
+        // Advertis
+        app.get('/advertis', async (req, res) => {
+            const query = {};
+            const result = await advertisCollection.find(query).toArray();
+            res.send(result);
+        });
+
 
 
     }

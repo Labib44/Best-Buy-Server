@@ -47,6 +47,7 @@ async function run() {
         const usersCollection = client.db('best-buy').collection('users');
         const paymentsCollection = client.db('best-buy').collection('payments');
         const advertisCollection = client.db('best-buy').collection('advertis');
+        const wishListCollection = client.db('best-buy').collection('wishlist');
 
 
 
@@ -223,19 +224,24 @@ async function run() {
             const user = await usersCollection.findOne(query);
             res.send({ isSeller: user?.role === 'seller' });
         });
-        // Admin seller buyer
-        app.get('/users/admin/:email', async (req, res) => {
-            const email = req.params.email;
-            const query = { email };
-            const user = await usersCollection.findOne(query);
-            res.send({ isAdmin: user?.role === 'admin' || 'seller' || 'buyer' });
-        });
-
-
+  
         // Advertis
         app.get('/advertis', async (req, res) => {
             const query = {};
             const result = await advertisCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        // Wish List post
+        app.post('/wishlist', async (req, res) => {
+            const product = req.body;
+            const result = await wishListCollection.insertOne(product);
+            res.send(result);
+        });
+        // Wish List get
+        app.get('/wishlist', async (req, res) => {
+            const query = {};
+            const result = await wishListCollection.find(query).toArray();
             res.send(result);
         });
 

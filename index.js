@@ -224,7 +224,7 @@ async function run() {
             const user = await usersCollection.findOne(query);
             res.send({ isSeller: user?.role === 'seller' });
         });
-  
+
         // Advertis
         app.get('/advertis', async (req, res) => {
             const query = {};
@@ -238,13 +238,23 @@ async function run() {
             const result = await wishListCollection.insertOne(product);
             res.send(result);
         });
+
+        // delete wish list
+        app.delete('/wishlist/:id', verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) }
+            const result = await wishListCollection.deleteOne(filter);
+            res.send(result);
+        })
         // Wish List get
-        app.get('/wishlist', async (req, res) => {
-            const query = {};
+        app.get('/wishlist', verifyJwt, async (req, res) => {
+            const email = req.query.email;
+            const decodedEmail = req.decoded.email;
+
+            const query = { email: email };
             const result = await wishListCollection.find(query).toArray();
             res.send(result);
         });
-
 
 
     }
